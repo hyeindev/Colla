@@ -1,0 +1,199 @@
+
+<table>
+
+create table colla_member(
+email varchar2(50) primary key,
+password varchar2(200),
+name varchar2(30),
+img varchar2(200) default 'profile.png',
+enabled varchar2(10) default '1',
+authority varchar2(20) default 'ROLE_USER'
+);
+
+
+create table colla_board(
+b_fk number primary key,
+b_leader varchar2(50),
+b_title varchar2(200),
+b_content varchar2(2000)
+);
+
+create table b_member(
+b_fk number,
+b_member varchar2(50)
+);
+
+
+create table colla_list(
+b_fk number,
+l_fk number primary key,
+l_title varchar2(200),
+pos number
+);
+
+
+create table colla_card(
+b_fk number,
+l_fk number,
+c_fk number primary key,
+c_title varchar2(200),
+c_description varchar2(4000),
+c_create date,
+c_deadline date,
+c_done varchar2(10),
+pos number
+);
+
+create table colla_reply(
+b_fk number,
+l_fk number,
+c_fk number,
+r_index number primary key,
+r_writer varchar2(50),
+r_content varchar2(500)
+);
+
+create table c_member(
+c_fk number,
+c_member varchar2(50)
+);
+
+
+===================================================================
+
+
+<foreign key>  ※ 왼쪽일수록 상위개념
+
+┌ ▶ colla_member 의 email	-------> 	b_member 의 b_member
+└					b_member 의 b_member	-------> c_member 의 c_member   ==> keep....
+				
+
+┌ ▶ colla_board 의 b_fk	-------> b_member 의 b_fk
+└			-------> colla_list 의 b_fk
+
+
+─ ▶ colla_list 의 l_fk		-------> colla_card 의 l_fk
+
+
+┌ ▶ colla_card 의 c_fk	--------> c_member의 c_fk
+└			--------> colla_reply 의 c_fk
+
+
+─ ▶ colla_reply 의 r_writer	--------> colla_member 의 email
+
+
+=====================================================================
+
+
+<sequence>
+
+create sequence b_fk_seq;
+create sequence l_fk_seq;
+create sequence c_fk_seq;
+create sequence r_index_seq;
+create sequence l_pos_seq increment by 10;
+create sequence c_pos_seq increment by 10;
+
+
+
+
+======================================================================
+
+
+
+
+<constraint>
+
+ALTER TABLE b_member add constraints b_member_fk foreign key(b_fk) references colla_board(b_fk) ON DELETE CASCADE;
+
+    	  : b_member의 b_fk와 colla_board의 b_fk를 외래키로 연결
+
+
+ALTER TABLE b_member add constraints b_member_email foreign key(b_member) references colla_member(email) ON DELETE CASCADE;
+
+      	: b_member의  b_member 와 colla_member의 email을  외래키로 연결
+
+
+ALTER TABLE colla_reply add constraints colla_reply_r_writer foreign key(r_writer) references colla_member(email) ON DELETE CASCADE;
+
+	: colla_reply 의 r_writer 와 colla_member 의 email 을 외래키 연결
+
+
+ALTER TABLE colla_list add constraints colla_list_board foreign key(b_fk) references  colla_board(b_fk) ON DELETE CASCADE;
+
+	: colla_list 의 b_fk 와 colla_board 의 b_fk 를 외래키연결
+
+
+ALTER TABLE c_member add constraints colla_card_c_fk foreign key(c_fk) references colla_card(c_fk) ON DELETE CASCADE;
+
+	: c_member 의 c_fk 와 colla_card 의 c_fk 외래키 연결
+
+
+ALTER TABLE colla_card add constraints colla_card_list foreign key(l_fk) references  colla_list(l_fk) ON DELETE CASCADE;
+
+	: colla_card 의 l_fk 와 colla_list 의 l_fk 외래키 연결
+
+
+ALTER TABLE colla_reply add constraints colla_reply_c_fk foreign key(c_fk) references colla_card(c_fk) ON DELETE CASCADE;
+
+	: colla_reply 의 c_fk 와 colla_card 의 c_fk 외래키 연결
+
+
+=================================================================================
+
+< 모든 테이블의 레코드를 정리하고 새로 시작하고 싶을때 아래 코드를 복붙 >
+
+※ 절대 테이블 Drop 하지 말 것
+※ 아래 코드 복붙시 member 테이블까지 정리됩니다 (남겨두고싶다면 해당 쿼리문 빼고 실행하세요)
+
+delete from colla_member;
+delete from colla_board;
+delete from colla_list;
+delete from colla_card;
+delete from colla_reply;
+drop sequence b_fk_seq;
+drop sequence l_fk_seq;
+drop sequence c_fk_seq;
+drop sequence l_pos_seq;
+drop sequence c_pos_seq;
+drop sequence r_index_seq;
+create sequence b_fk_seq;
+create sequence l_fk_seq;
+create sequence c_fk_seq;
+create sequence r_index_seq;
+create sequence l_pos_seq increment by 10;
+create sequence c_pos_seq increment by 10;
+
+
+
+
+
+
+
+
+
+
+
+
+==================================================================================
+
+
+변경사항 :	alter table colla_card MODIFY(c_create varchar2(20));
+		alter table colla_card MODIFY(c_deadline varchar2(20));
+		
+		input type="date" value DB insert 대신 String으로받아서
+		date 타입캐스팅	
+
+		cardVO -> cDone 필드 setter 에 boolean캐스팅
+
+		
+
+================================================================
+
+
+
+
+
+update colla_list set pos = 
+(select (MAX(pos)+MIN(pos))/2 from 
+(select pos from colla_list where l_fk=#{stoplFk} OR l_fk=#{stoplFk})) where l_fk = #{l_fk}
